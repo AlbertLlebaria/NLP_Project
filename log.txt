@@ -1,3 +1,6 @@
 Day 1:
 He estat buscant datasets i no he trobat casi res, excepte..
 He trobat un dataset que mes o menys podem utilitzar a possible datasets
+Day 2:
+He trobat 1 Paper interesant on presenten una implementacio del esquema que el Leon ens va enviar.
+Tota la documentacio i informacio important esta al README.md
