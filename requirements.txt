@@ -1,4 +1,6 @@
-spacy===2.0.18
-sklearn
+nltk
+scikit-learn
 scipy
-problog
+spacy
+pandas
+sklearn
