@@ -2256,14 +2256,6 @@
 <RELATION id='r0'	sp='sw6'	tr='tw1'	lm='lw8'	general_type='region'/>
 </SENTENCE>
 
-<SENTENCE id='s260'>
-<CONTENT>some kids standing in front of the kids posing .</CONTENT>
-<TRAJECTOR id='tw1'> kids</TRAJECTOR>
-<LANDMARK id='lw7'> kids</LANDMARK>
-<SPATIAL_INDICATOR id='sw3'>in front of </SPATIAL_INDICATOR>
-<RELATION id='r0'	sp='sw3'	tr='tw1'	lm='lw7'	general_type='direction'/>
-</SENTENCE>
-
 <SENTENCE id='s261'>
 <CONTENT>portrait of a dark-skinned , dark-haired boy wearing a white and blue jumper with a red collar .</CONTENT>
 </SENTENCE>
@@ -4459,13 +4451,6 @@
 <RELATION id='r1'	sp='sw5'	tr='tw4'	lm='lw7'	general_type='region'/>
 </SENTENCE>
 
-<SENTENCE id='s511'>
-<CONTENT>a dark-haired girl wearing a black hat , a yellow tee-shirt and a white vest underneath a green vest , and a necklace with white and green glass beads .</CONTENT>
-<TRAJECTOR id='tw14'>Vest</TRAJECTOR>
-<LANDMARK id='lw18'>Vest</LANDMARK>
-<SPATIAL_INDICATOR id='sw15'>underneath </SPATIAL_INDICATOR>
-<RELATION id='r0'	sp='sw15'	tr='tw14'	lm='lw18'	general_type='region'/>
-</SENTENCE>
 
 <SENTENCE id='s512'>
 <CONTENT>a dark-skinned , dark-haired girl wearing a black hat , a red vest and a brown necklace , in the backyard of a house .</CONTENT>
@@ -4909,18 +4894,6 @@
 
 <SENTENCE id='s567'>
 <CONTENT>a dark-skinned , dark-haired girl wearing a light and dark blue and white shirt made of silk .</CONTENT>
-</SENTENCE>
-
-<SENTENCE id='s568'>
-<CONTENT>a large black and red saurian next to a small black saurian on some sandy rocks .</CONTENT>
-<TRAJECTOR id='tw5'> saurian</TRAJECTOR>
-<LANDMARK id='lw11'> saurian</LANDMARK>
-<SPATIAL_INDICATOR id='sw7'>next to </SPATIAL_INDICATOR>
-<RELATION id='r0'	sp='sw7'	tr='tw5'	lm='lw11'	general_type='distance'/>
-<TRAJECTOR id='tw11'> saurian</TRAJECTOR>
-<LANDMARK id='lw15'> rocks</LANDMARK>
-<SPATIAL_INDICATOR id='sw12'>on </SPATIAL_INDICATOR>
-<RELATION id='r1'	sp='sw12'	tr='tw11'	lm='lw15'	general_type='region'/>
 </SENTENCE>
 
 <SENTENCE id='s569'>

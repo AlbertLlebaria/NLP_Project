@@ -34,7 +34,7 @@ from pathlib import Path
 import spacy
 from spacy.util import minibatch, compounding
 import xml.etree.ElementTree as ET
-
+import toolz
 
 # new entity label
 LABELS = ['TRAJECTOR', 'SPATIAL_INDICATOR', 'LANDMARK']
@@ -44,26 +44,82 @@ root_train = ET.parse('./train.xml').getroot()
 TRAIN_DATA = []
 TEST_DATA = []
 
+
+def find_word_indexes(word, text_array):
+    found = False
+    index = 0
+    word_index = 0
+
+    while(found is False and index < len(text_array)-1):
+        if text_array[index].lower() == word.lower():
+            found = True
+        else:
+            word_index += len(text_array[index]) + 1
+            index += 1
+    if(index == len(text_array)-1):
+        return word_index - 1
+    else:
+        return word_index
+
+
 for sentence in root_train:
-    text = sentence.find('CONTENT').text
-    TRAJECTOR_xml = sentence.find('TRAJECTOR')
-    SPATIAL_I_xml = sentence.find('SPATIAL_INDICATOR')
-    LANDMARK_indicator_xml = sentence.find('LANDMARK')
-
+    text = sentence.find('CONTENT').text.lstrip()
+    TRAJECTORS_xml = sentence.findall('TRAJECTOR')
+    SPATIALS_I_xml = sentence.findall('SPATIAL_INDICATOR')
+    LANDMARKS_indicator_xml = sentence.findall('LANDMARK')
     entities = []
-    if(TRAJECTOR_xml is not None):
-        entities.append((text.find(TRAJECTOR_xml.text)+1,
-                        text.find(TRAJECTOR_xml.text) + len(TRAJECTOR_xml.text)-1, 'TRAJECTOR'))
-    if(SPATIAL_I_xml is not None):
-        entities.append((text.find(SPATIAL_I_xml.text)+1,
-                        text.find(SPATIAL_I_xml.text) + len(SPATIAL_I_xml.text)-1, 'SPATIAL_INDICATOR'))
+    word_list = text.split()
 
-    # if(LANDMARK_indicator_xml is not None):
-    #     entities.append((text.find(LANDMARK_indicator_xml.text)+1,
-    #                     text.find(LANDMARK_indicator_xml.text) + len(LANDMARK_indicator_xml.text)-1, 'LANDMARK'))
+    for TRAJECTOR in TRAJECTORS_xml:
+        word = TRAJECTOR.text.lower().split()[0]
+        pos = find_word_indexes(word, word_list)
+        entities.append((pos,
+                             pos + len(word), 'TRAJECTOR'))
+
+    for SPATIAL in SPATIALS_I_xml:
+        word = SPATIAL.text.lower().split()[0]
+        pos = find_word_indexes(word, word_list)
+        entities.append((pos,
+                             pos + len(word), 'SPATIAL_INDICATOR'))
+
+    for LANDMARK in LANDMARKS_indicator_xml:
+        word = LANDMARK.text.lower().split()[0]
+        pos = find_word_indexes(word, word_list)
+        entities.append((pos,
+                             pos + len(word), 'LANDMARK'))
+
     TRAIN_DATA.append(
-        (text, {"entities": entities},
-         ))
+        (text, {"entities": list(toolz.unique(entities, key=lambda x: x[0]))}))
+
+
+for sentence in root_test:
+    text = sentence.find('CONTENT').text.lstrip()
+    TRAJECTORS_xml = sentence.findall('TRAJECTOR')
+    SPATIALS_I_xml = sentence.findall('SPATIAL_INDICATOR')
+    LANDMARKS_indicator_xml = sentence.findall('LANDMARK')
+    entities = []
+    word_list = text.split()
+
+    for TRAJECTOR in TRAJECTORS_xml:
+        word = TRAJECTOR.text.lower().split()[0]
+        pos = find_word_indexes(word, word_list)
+        entities.append((pos,
+                             pos + len(word), 'TRAJECTOR'))
+
+    for SPATIAL in SPATIALS_I_xml:
+        word = SPATIAL.text.lower().split()[0]
+        pos = find_word_indexes(word, word_list)
+        entities.append((pos,
+                             pos + len(word), 'SPATIAL_INDICATOR'))
+
+    for LANDMARK in LANDMARKS_indicator_xml:
+        word = LANDMARK.text.lower().split()[0]
+        pos = find_word_indexes(word, word_list)
+        entities.append((pos,
+                             pos + len(word), 'LANDMARK'))
+
+    TEST_DATA.append(
+        (text, {"entities": list(toolz.unique(entities, key=lambda x: x[0]))}))
 
 
 @plac.annotations(
@@ -111,14 +167,14 @@ def main(model=None, new_model_name="animal", output_dir=None, n_iter=30):
                 nlp.update(texts, annotations, sgd=optimizer,
                            drop=0.35, losses=losses)
             print("Losses", losses)
-
+    aux = 'one child is carrying shoe-cleaning equipment , the one on the left is holding a cup , the other one is hanging on to the fence .'
     # test the trained model
-    test_text = TRAIN_DATA[0][0]
-    doc = nlp(test_text)
-    print(doc)
-    print("Entities in '%s'" % test_text)
-    for ent in doc.ents:
-        print(ent.label_, ent.text)
+    for test_text in TEST_DATA:
+        doc = nlp(test_text[0])
+        print("Entities in '%s'" % test_text[0])
+        for ent in doc.ents:
+            print('PREDICTED : ', ent.label_, ent.text)
+            print('ACTUAL :', test_text[1])
 
     # save model to output directory
     if output_dir is not None:
@@ -134,7 +190,7 @@ def main(model=None, new_model_name="animal", output_dir=None, n_iter=30):
         nlp2 = spacy.load(output_dir)
         # Check the classes have loaded back consistently
         assert nlp2.get_pipe("ner").move_names == move_names
-        doc2 = nlp2(test_text)
+        doc2 = nlp2(aux)
         print(doc2)
         for ent in doc2.ents:
             print(ent.label_, ent.text)

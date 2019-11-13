@@ -4,3 +4,4 @@ scipy
 spacy
 pandas
 sklearn
+toolz
