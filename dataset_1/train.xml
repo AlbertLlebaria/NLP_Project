@@ -20,7 +20,7 @@
 <SENTENCE id='s3'>
 <CONTENT>a sign saying that plants can't be picked up on the right .</CONTENT>
 <TRAJECTOR id='tw1'> sign</TRAJECTOR>
-<LANDMARK id='lw14'>undefined</LANDMARK>
+<LANDMARK id='lw4'>plants</LANDMARK>
 <SPATIAL_INDICATOR id='sw10'>on the right </SPATIAL_INDICATOR>
 <RELATION id='r0'	sp='sw10'	tr='tw1'	lm='lw14'	general_type='direction'/>
 </SENTENCE>

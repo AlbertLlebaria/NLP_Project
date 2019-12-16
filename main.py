@@ -1,125 +1,22 @@
-#!/usr/bin/env python
-# coding: utf8
-"""Example of training an additional entity type
 
-This script shows how to add a new entity type to an existing pretrained NER
-model. To keep the example short and simple, only four sentences are provided
-as examples. In practice, you'll need many more — a few hundred would be a
-good start. You will also likely need to mix in examples of other entity
-types, which might be obtained by running the entity recognizer over unlabelled
-sentences, and adding their annotations to the training set.
-
-The actual training is performed by looping over the examples, and calling
-`nlp.entity.update()`. The `update()` method steps through the words of the
-input. At each word, it makes a prediction. It then consults the annotations
-provided on the GoldParse instance, to see whether it was right. If it was
-wrong, it adjusts its weights so that the correct action will score higher
-next time.
-
-After training your model, you can save it to a directory. We recommend
-wrapping models as Python packages, for ease of deployment.
-
-For more details, see the documentation:
-* Training: https://spacy.io/usage/training
-* NER: https://spacy.io/usage/linguistic-features#named-entities
-
-Compatible with: spaCy v2.1.0+
-Last tested with: v2.1.0
-"""
 from __future__ import unicode_literals, print_function
-
+from pathlib import Path
+from spacy.util import minibatch, compounding
+from sklearn.externals import joblib
+from utils import parse_XML_dataset, test_NER, test_PARSE
 import plac
 import random
-from pathlib import Path
 import spacy
-from spacy.util import minibatch, compounding
-import xml.etree.ElementTree as ET
-import toolz
+
 
 # new entity label
-LABELS = ['TRAJECTOR', 'SPATIAL_INDICATOR', 'LANDMARK']
-root_test = ET.parse('./test.xml').getroot()
-root_train = ET.parse('./train.xml').getroot()
+NER_LABELS = ['TRAJECTOR', 'SPATIAL_INDICATOR', 'LANDMARK']
+PARSE_LABELS = ['TRAJECTOR', '-', 'LANDMARK', 'SPATIAL_INDICATOR']
 
-TRAIN_DATA = []
-TEST_DATA = []
-
-
-def find_word_indexes(word, text_array):
-    found = False
-    index = 0
-    word_index = 0
-
-    while(found is False and index < len(text_array)-1):
-        if text_array[index].lower() == word.lower():
-            found = True
-        else:
-            word_index += len(text_array[index]) + 1
-            index += 1
-    if(index == len(text_array)-1):
-        return word_index - 1
-    else:
-        return word_index
-
-
-for sentence in root_train:
-    text = sentence.find('CONTENT').text.lstrip()
-    TRAJECTORS_xml = sentence.findall('TRAJECTOR')
-    SPATIALS_I_xml = sentence.findall('SPATIAL_INDICATOR')
-    LANDMARKS_indicator_xml = sentence.findall('LANDMARK')
-    entities = []
-    word_list = text.split()
-
-    for TRAJECTOR in TRAJECTORS_xml:
-        word = TRAJECTOR.text.lower().split()[0]
-        pos = find_word_indexes(word, word_list)
-        entities.append((pos,
-                             pos + len(word), 'TRAJECTOR'))
-
-    for SPATIAL in SPATIALS_I_xml:
-        word = SPATIAL.text.lower().split()[0]
-        pos = find_word_indexes(word, word_list)
-        entities.append((pos,
-                             pos + len(word), 'SPATIAL_INDICATOR'))
-
-    for LANDMARK in LANDMARKS_indicator_xml:
-        word = LANDMARK.text.lower().split()[0]
-        pos = find_word_indexes(word, word_list)
-        entities.append((pos,
-                             pos + len(word), 'LANDMARK'))
-
-    TRAIN_DATA.append(
-        (text, {"entities": list(toolz.unique(entities, key=lambda x: x[0]))}))
-
-
-for sentence in root_test:
-    text = sentence.find('CONTENT').text.lstrip()
-    TRAJECTORS_xml = sentence.findall('TRAJECTOR')
-    SPATIALS_I_xml = sentence.findall('SPATIAL_INDICATOR')
-    LANDMARKS_indicator_xml = sentence.findall('LANDMARK')
-    entities = []
-    word_list = text.split()
-
-    for TRAJECTOR in TRAJECTORS_xml:
-        word = TRAJECTOR.text.lower().split()[0]
-        pos = find_word_indexes(word, word_list)
-        entities.append((pos,
-                             pos + len(word), 'TRAJECTOR'))
-
-    for SPATIAL in SPATIALS_I_xml:
-        word = SPATIAL.text.lower().split()[0]
-        pos = find_word_indexes(word, word_list)
-        entities.append((pos,
-                             pos + len(word), 'SPATIAL_INDICATOR'))
-
-    for LANDMARK in LANDMARKS_indicator_xml:
-        word = LANDMARK.text.lower().split()[0]
-        pos = find_word_indexes(word, word_list)
-        entities.append((pos,
-                             pos + len(word), 'LANDMARK'))
-
-    TEST_DATA.append(
-        (text, {"entities": list(toolz.unique(entities, key=lambda x: x[0]))}))
+NER_TRAIN_DATA, PARSE_TRAIN_DATA, RELATIONS_TRAIN = parse_XML_dataset(
+    './dataset_1/train.xml')
+NER_TEST_DATA, PARSE_TEST_DATA, RELATIONS_TEST = parse_XML_dataset(
+    './dataset_1/test.xml')
 
 
 @plac.annotations(
@@ -128,7 +25,7 @@ for sentence in root_test:
     output_dir=("Optional output directory", "option", "o", Path),
     n_iter=("Number of training iterations", "option", "n", int),
 )
-def main(model=None, new_model_name="animal", output_dir=None, n_iter=30):
+def main(model=None, new_model_name="SpRL", output_dir=None, n_iter=30):
     """Set up the pipeline and entity recognizer, and train the new entity."""
     random.seed(0)
     if model is not None:
@@ -137,21 +34,43 @@ def main(model=None, new_model_name="animal", output_dir=None, n_iter=30):
     else:
         nlp = spacy.blank("en")  # create blank Language class
         print("Created blank 'en' model")
+
     # Add entity recognizer to model if it's not in the pipeline
-    # nlp.create_pipe works for built-ins that are registered with spaCy
     if "ner" not in nlp.pipe_names:
         ner = nlp.create_pipe("ner")
         nlp.add_pipe(ner)
-    # otherwise, get it, so we can add labels to it
     else:
         ner = nlp.get_pipe("ner")
-    for LABEL in LABELS:
+    for LABEL in NER_LABELS:
         ner.add_label(LABEL)  # add new entity label to entity recognizer
 
     if model is None:
         optimizer = nlp.begin_training()
     else:
         optimizer = nlp.resume_training()
+
+    if "parser" in nlp.pipe_names:
+        nlp.remove_pipe("parser")
+    parser = nlp.create_pipe("parser")
+    nlp.add_pipe(parser, first=True)
+
+    for label in PARSE_LABELS:
+        parser.add_label(label)
+
+    other_pipes = [pipe for pipe in nlp.pipe_names if pipe != "parser"]
+    with nlp.disable_pipes(*other_pipes):  # only train parser
+        optimizer = nlp.begin_training()
+        for itn in range(n_iter):
+            random.shuffle(PARSE_TRAIN_DATA)
+            losses = {}
+            # batch up the examples using spaCy's minibatch
+            batches = minibatch(
+                PARSE_TRAIN_DATA, size=compounding(4.0, 32.0, 1.001))
+            for batch in batches:
+                texts, annotations = zip(*batch)
+                nlp.update(texts, annotations, sgd=optimizer, losses=losses)
+            print("Losses", losses)
+
     move_names = list(ner.move_names)
     # get names of other pipes to disable them during training
     other_pipes = [pipe for pipe in nlp.pipe_names if pipe != "ner"]
@@ -159,8 +78,8 @@ def main(model=None, new_model_name="animal", output_dir=None, n_iter=30):
         sizes = compounding(1.0, 4.0, 1.001)
         # batch up the examples using spaCy's minibatch
         for itn in range(n_iter):
-            random.shuffle(TRAIN_DATA)
-            batches = minibatch(TRAIN_DATA, size=sizes)
+            random.shuffle(NER_TRAIN_DATA)
+            batches = minibatch(NER_TRAIN_DATA, size=sizes)
             losses = {}
             for batch in batches:
                 texts, annotations = zip(*batch)
@@ -169,12 +88,10 @@ def main(model=None, new_model_name="animal", output_dir=None, n_iter=30):
             print("Losses", losses)
     aux = 'one child is carrying shoe-cleaning equipment , the one on the left is holding a cup , the other one is hanging on to the fence .'
     # test the trained model
-    for test_text in TEST_DATA:
-        doc = nlp(test_text[0])
-        print("Entities in '%s'" % test_text[0])
-        for ent in doc.ents:
-            print('PREDICTED : ', ent.label_, ent.text)
-            print('ACTUAL :', test_text[1])
+    print("+=+=+=+=+=+=+=+=+=+=+ TESTING NER +=+=+=+=+=+=+=+=+=+=+")
+    test_NER(nlp, NER_TEST_DATA)
+    print("+=+=+=+=+=+=+=+=+=+=+ TESTING PARSE +=+=+=+=+=+=+=+=+=+=+")
+    test_PARSE(nlp, PARSE_TEST_DATA, RELATIONS_TEST)
 
     # save model to output directory
     if output_dir is not None:
