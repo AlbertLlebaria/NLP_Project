@@ -11,9 +11,8 @@ labels = ['LANDMARK', 'TRAJECTOR', 'SPATIAL_INDICATOR']
 @plac.annotations(
     model=("Model name. Defaults to blank 'en' model.", "option", "m", str),
     sentence=("Sentence to apply the spatial labeling.", "option", "s", str),
-    output_dir=("Optional output directory", "option", "o", Path),
 )
-def main(model=None, sentence="", output_dir=None):
+def main(model=None, sentence=""):
     if model is not None:
         nlp = spacy.load(model)  # load existing spaCy model
     else:
