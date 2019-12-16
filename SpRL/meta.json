@@ -1,0 +1,1 @@
+{"lang":"en","name":"SpRL","version":"0.0.0","spacy_version":">=2.2.1","description":"","author":"","email":"","url":"","license":"","vectors":{"width":0,"vectors":0,"keys":0,"name":"spacy_pretrained_vectors"},"pipeline":["parser","ner"],"labels":{"parser":["","LANDMARK","ROOT","SPATIAL_INDICATOR","TRAJECTOR","dep"],"ner":["LANDMARK","SPATIAL_INDICATOR","TRAJECTOR"]}}

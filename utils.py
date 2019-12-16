@@ -83,7 +83,7 @@ def parse_XML_dataset(path):
 def find_trueP_and_falseN(found_entities, true_entity):
     isPositive = False
     for ent in found_entities:
-        if(ent.end_char == true_entity[1] and ent.start_char, true_entity[0] and ent.label_ == true_entity[2]):
+        if(ent.end_char == true_entity[1] and ent.start_char == true_entity[0] and ent.label_ == true_entity[2]):
             isPositive = True
     return 1 if isPositive else 0
 
@@ -92,11 +92,13 @@ def find_falseP(true_entities, entity_found):
     found = False
     for ent in true_entities:
         if(entity_found.end_char == ent[1] and entity_found.start_char == ent[0] and entity_found.label_ == ent[2]):
-            isNegative = True
+            found = True
     return 1 if found else 0
 
 # tp is the number of true positives (the number of instances that are correctly found),
 # fp is the number of false positives (number of instances that are predicted by the system but not a true instance)
+
+
 def precision(tp, fp):
     try:
         return tp/(tp+fp)
@@ -105,6 +107,8 @@ def precision(tp, fp):
 
 # tp is the number of true positives (the number of instances that are correctly found),
 # fn is the number of false negatives (missing results).
+
+
 def recall(tp, fn):
     try:
         return tp/(tp+fn)
@@ -127,21 +131,47 @@ def test_NER(nlp, NER_TEST):
     prec_avg = []
     rec_avg = []
 
+    f1_avg_role = dict(LANDMARK=[], TRAJECTOR=[], SPATIAL_INDICATOR=[])
+    prec_avg_role = dict(LANDMARK=[], TRAJECTOR=[], SPATIAL_INDICATOR=[])
+    rec_avg_role = dict(LANDMARK=[], TRAJECTOR=[], SPATIAL_INDICATOR=[])
+
     for test_text in NER_TEST:
         doc = nlp(test_text[0])
         entities_found = doc.ents
+        detailed = dict(LANDMARK=dict(tp=0, fp=0, fn=0), TRAJECTOR=dict(
+            tp=0, fp=0, fn=0), SPATIAL_INDICATOR=dict(tp=0, fp=0, fn=0))
+        for true_entity in test_text[1]['entities']:
+            isTruePositive = False
+            for found in entities_found:
+                if(found.label_ == true_entity[2] and found.end_char == true_entity[1] and found.start_char == true_entity[0]):
+                    isTruePositive = True
+            if(isTruePositive):
+                detailed[true_entity[2]]['tp'] += 1
+            else:
+                detailed[true_entity[2]]['fn'] += 1
+        for found in entities_found:
+            isFp = find_falseP(test_text[1]['entities'], found)
+            if(isFp == 0):
+                detailed[found.label_]['fp'] += 1
 
-        tp_fp = list(map(lambda x:  find_trueP_and_falseN(
-            entities_found, x), test_text[1]['entities']))
-        fn = list(map(lambda x:  find_falseP(
-            test_text[1]['entities'], x), entities_found))
+        for k in detailed.keys():
+            tp_d = detailed[k]['tp']
+            fp_d = detailed[k]['fp']
+            fn_d = detailed[k]['fn']
+            prec, rec, f1 = F1_score(tp_d, fn_d, fp_d)
 
-        tp = tp_fp.count(1)
-        fp = tp_fp.count(0)
-        diff = len(entities_found) - len(test_text[1]['entities'])
-        fn = diff if diff >= 0 else 0
+            if(tp_d == 0 and fp_d == 0 and fn_d == 0):
+                prec, rec, f1 = 1, 1, 1
+
+            f1_avg_role[k].append(f1)
+            prec_avg_role[k].append(prec)
+            rec_avg_role[k].append(rec)
+
+        tp = sum([val['tp'] for val in detailed.values()])
+        fn = sum([val['fn'] for val in detailed.values()])
+        fp = sum([val['fp'] for val in detailed.values()])
         if(len(entities_found) == 0 and len(test_text[1]['entities']) == 0):
-            print(f'F1: 1')
+            print(f'F1: 1, no entities found when no entities where suposed to be found')
             f1_avg.append(1)
             prec_avg.append(1)
             rec_avg.append(1)
@@ -151,7 +181,11 @@ def test_NER(nlp, NER_TEST):
             f1_avg.append(f1)
             prec_avg.append(prec)
             rec_avg.append(rec)
-    print(np.mean(f1_avg), np.mean(prec_avg), np.mean(rec_avg))
+
+    for k in detailed.keys():
+        print(
+            f"{k} : {np.mean(f1_avg_role[k])},{np.mean(prec_avg_role[k])}, {np.mean(rec_avg_role[k])}")
+    print(f"MEAN: {np.mean(f1_avg)},{np.mean(prec_avg)}, {np.mean(rec_avg)}")
 
 
 def get_dep_path(span1, span2):
@@ -251,18 +285,21 @@ def extract_candidate_relations_from_sents(doc, gold_relations):
         for trajector in trajectors:
             for landmark in landmarks:
                 if not (trajector is None and landmark is None):
-                    assert trajector.sent == trigger.sent == landmark.sent, "{}: {}".format(
-                        doc, doc.ents)
-                    crel = (trajector, trigger, landmark)
-                    if crel not in gold_relations:
-                        candidate_relations.append(crel)
-                        candidate_labels.append('NONE')
-                    else:
+                    try:
+                        assert trajector.sent == trigger.sent == landmark.sent, "{}: {}".format(
+                            doc, doc.ents)
+                        crel = (trajector, trigger, landmark)
+                        if crel not in gold_relations:
+                            candidate_relations.append(crel)
+                            candidate_labels.append('NONE')
+                        else:
+                            pass
+                    except:
                         pass
     return candidate_relations, candidate_labels
 
 
-def test_PARSE(nlp, PARSE_TEST, s_relations):
+def test_RELATIONS(nlp, PARSE_TEST, s_relations):
     f1_avg = []
     prec_avg = []
     rec_avg = []
@@ -298,8 +335,7 @@ def test_PARSE(nlp, PARSE_TEST, s_relations):
                     found = False
                 elif(predicted[2].start != relation['LANDMARK']):
                     found = False
-                
-                
+
                 if(found):
                     tp += 1
                 else:

@@ -3,7 +3,7 @@ from __future__ import unicode_literals, print_function
 from pathlib import Path
 from spacy.util import minibatch, compounding
 from sklearn.externals import joblib
-from utils import parse_XML_dataset, test_NER, test_PARSE
+from utils import parse_XML_dataset, test_NER, test_RELATIONS
 import plac
 import random
 import spacy
@@ -91,7 +91,7 @@ def main(model=None, new_model_name="SpRL", output_dir=None, n_iter=30):
     print("+=+=+=+=+=+=+=+=+=+=+ TESTING NER +=+=+=+=+=+=+=+=+=+=+")
     test_NER(nlp, NER_TEST_DATA)
     print("+=+=+=+=+=+=+=+=+=+=+ TESTING PARSE +=+=+=+=+=+=+=+=+=+=+")
-    test_PARSE(nlp, PARSE_TEST_DATA, RELATIONS_TEST)
+    test_RELATIONS(nlp, PARSE_TEST_DATA, RELATIONS_TEST)
 
     # save model to output directory
     if output_dir is not None:
